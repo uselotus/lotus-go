@@ -202,5 +202,5 @@ type Error struct {
     - [x] List Plans (Missing some query filters)
     - [x] Get Plan
 7. Add-ons
-    - [ ] Attach Add-on
-    - [ ] Cancel Add-on
+    - [x] Attach Add-on
+    - [x] Cancel Add-on

@@ -64,6 +64,20 @@ type CancelSubscriptionRequest struct {
 	FlatFeeBehavior   CancellationFlatFeeBehavior `json:"flat_fee_behavior,omitempty"`
 }
 
+type AttachAddonRequest struct {
+	SubscriptionId string `json:"-"`
+	AddonId        string `json:"addon_id,omitempty"`
+	Quantity       int    `json:"quantity,omitempty"`
+}
+
+type CancelAddonRequest struct {
+	SubscriptionId    string                      `json:"-"`
+	AddonId           string                      `json:"-"`
+	InvoicingBehavior InvoicingBehavior           `json:"invoicing_behavior,omitempty"`
+	UsageBehavior     CancellationUsageBehavior   `json:"usage_behavior,omitempty"`
+	FlatFeeBehavior   CancellationFlatFeeBehavior `json:"flat_fee_behavior,omitempty"`
+}
+
 type Subscription struct {
 	SubscriptionId                    string                              `json:"subscription_id,omitempty"`
 	Customer                          *CustomerMeta                       `json:"customer,omitempty"`
@@ -143,6 +157,28 @@ func (c *Client) SwitchSubscriptionPlan(req SwitchSubscriptionPlanRequest) (resp
 func (c *Client) CancelSubscription(req CancelSubscriptionRequest) (resp *Subscription, err error) {
 	resp = new(Subscription)
 	err = c.post("/api/subscriptions/"+req.SubscriptionId+"/cancel/", nil, req, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// AttachAddon adds an addon to a customer’s subscription
+// See: https://docs.uselotus.io/api-reference/subscriptions/attach-addon
+func (c *Client) AttachAddon(req AttachAddonRequest) (resp *Subscription, err error) {
+	resp = new(Subscription)
+	err = c.post("/api/subscriptions/"+req.SubscriptionId+"/addons/attach/", nil, req, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// CancelAddon cancels an addon in the customer’s subscription
+// See: https://docs.uselotus.io/api-reference/subscriptions/attach-addon
+func (c *Client) CancelAddon(req CancelAddonRequest) (resp *Subscription, err error) {
+	resp = new(Subscription)
+	err = c.post("/api/subscriptions/"+req.SubscriptionId+"/addons/"+req.AddonId+"/cancel/", nil, req, resp)
 	if err != nil {
 		return nil, err
 	}

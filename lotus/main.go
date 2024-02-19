@@ -120,3 +120,18 @@ func respError(resp *resty.Response) error {
 	}
 	return fmt.Errorf("server status code: %v, %v", resp.StatusCode(), resp.String())
 }
+
+type PingResponse struct {
+	OrganizationId string `json:"organization_id"`
+}
+
+// Ping pings Lotus API to check if the API key is valid
+// See: https://docs.uselotus.io/api-reference/api-overview
+func (c *Client) Ping() (resp *PingResponse, err error) {
+	resp = new(PingResponse)
+	err = c.get("/api/ping/", nil, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

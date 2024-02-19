@@ -19,6 +19,7 @@ type TestEntity struct {
 	subscriptionId string
 	eventName      string
 	metricId       string
+	addonId        string
 }
 
 var test TestEntity
@@ -37,6 +38,7 @@ func setup(t *testing.T) {
 	test.featureId = os.Getenv("LOTUS_SDK_TEST_FEATURE")
 	test.eventName = os.Getenv("LOTUS_SDK_TEST_EVENT")
 	test.metricId = os.Getenv("LOTUS_SDK_TEST_METRIC")
+	test.addonId = os.Getenv("LOTUS_SDK_TEST_ADDON")
 }
 
 func TestClient(t *testing.T) {
@@ -418,6 +420,30 @@ func TestClient(t *testing.T) {
 		assert.Equal(t, test.planId, resp.BillingPlan.PlanId, "UpdateSubscription")
 		assert.Contains(t, resp.Metadata, "CreatedBy", "UpdateSubscription")
 		assert.Contains(t, resp.Metadata, "UpdatedBy", "UpdateSubscription")
+	})
+
+	t.Run("Attach addon", func(t *testing.T) {
+		req := AttachAddonRequest{
+			SubscriptionId: test.subscriptionId,
+			AddonId:        test.addonId,
+			Quantity:       1,
+		}
+		resp, err := test.c.AttachAddon(req)
+		assert.Nil(t, err, "AttachAddon")
+		assert.NotEmpty(t, resp.SubscriptionId, "AttachAddon")
+	})
+
+	t.Run("Cancel the addon", func(t *testing.T) {
+		req := CancelAddonRequest{
+			SubscriptionId:    test.subscriptionId,
+			AddonId:           test.addonId,
+			InvoicingBehavior: InvoiceNow,
+			UsageBehavior:     BillFull,
+			FlatFeeBehavior:   ChargeProrated,
+		}
+		resp, err := test.c.CancelAddon(req)
+		assert.Nil(t, err, "CancelAddon")
+		assert.NotEmpty(t, resp.SubscriptionId, "CancelAddon")
 	})
 
 	t.Run("Switch subscription plan", func(t *testing.T) {
