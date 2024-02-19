@@ -33,11 +33,18 @@ func IsLotusError(err error) bool {
 	return ok
 }
 
-// IsNotFound checks whether error is 404 not found error
+// IsNotFound checks whether error is not found error
 func IsNotFound(err error) bool {
 	var e Error
 	ok := errors.As(err, &e)
 	return ok && (strings.ToLower(e.Title) == "not_found" || strings.ToLower(e.Title) == "does_not_exist")
+}
+
+// IsDuplicated checks whether error is duplicate error
+func IsDuplicated(err error) bool {
+	var e Error
+	ok := errors.As(err, &e)
+	return ok && strings.ToLower(e.Title) == "duplicate_resource"
 }
 
 // IsTimeout checks whether error is timeout error

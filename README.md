@@ -43,7 +43,8 @@ c := lotus.NewClient("<host>", "<key>").WithTimeout(time.Second * 5)
 
 ## Making calls
 
-Please refer to the [Lotus documentation](https://docs.uselotus.io/docs/api/) for more information. Here are some examples:
+Please refer to the [Lotus documentation](https://docs.uselotus.io/docs/api/) for more information. Here are some
+examples:
 
 ### Examples
 
@@ -159,7 +160,8 @@ func main() {
 We have declared `lotus.Error` type to represent Lotus API errors with some helper functions:
 
 - `IsLotusError(err error) bool`: Checks whether given error is one of Lotus defined types
-- `IsNotFound(err error) bool`: Checks whether error is 404 not found error
+- `IsNotFound(err error) bool`: Checks whether error is not found error
+- `IsDuplicated(err error) bool`: Checks whether error is duplicate error
 - `IsTimeout(err error) bool`: Checks whether error is timeout error
 
 ```go
@@ -181,18 +183,18 @@ type Error struct {
 2. Customers
     - [x] List Customers
     - [x] Get Customer
-    - [x] Create Customer
+    - [x] Create Customer (Server issue found)
 3. Credits
     - [ ] List Credits
     - [ ] Create Credit
     - [ ] Update Credit
     - [ ] Void Credit
 4. Subscriptions
-    - [ ] List Subscriptions
+    - [x] List Subscriptions
     - [x] Create Subscription
-    - [ ] Cancel Subscription
-    - [ ] Switch a Subscription's plan
-    - [ ] Update Subscription
+    - [x] Cancel Subscription
+    - [x] Switch a Subscription's plan (Server issue found)
+    - [x] Update Subscription
 5. Access Management
     - [x] Get Feature Access
     - [x] Get Metric Access

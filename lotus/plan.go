@@ -125,7 +125,7 @@ type RecurringCharge struct {
 // See: https://docs.uselotus.io/api-reference/plans/list-plans
 func (c *Client) ListPlans(req ListPlansRequest) (resp ListPlansResponse, err error) {
 	resp = make(ListPlansResponse, 0)
-	err = c.get("/api/plans/", nil, resp)
+	err = c.get("/api/plans/", nil, &resp)
 	if err != nil {
 		return nil, err
 	}

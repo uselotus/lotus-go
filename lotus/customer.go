@@ -3,15 +3,15 @@ package lotus
 import "github.com/shopspring/decimal"
 
 type CreateCustomerRequest struct {
-	CustomerId          string                 `json:"customer_id,omitempty"`
-	CustomerName        string                 `json:"customer_name,omitempty"`
-	DefaultCurrencyCode string                 `json:"default_currency_code,omitempty"`
-	Email               string                 `json:"email,omitempty"`
-	PaymentProvider     string                 `json:"payment_provider,omitempty"`
-	PaymentProviderId   string                 `json:"payment_provider_id,omitempty"`
+	CustomerId          *string                `json:"customer_id,omitempty"`
+	CustomerName        *string                `json:"customer_name,omitempty"`
+	DefaultCurrencyCode *string                `json:"default_currency_code,omitempty"`
+	Email               *string                `json:"email,omitempty"`
+	PaymentProvider     *string                `json:"payment_provider,omitempty"`
+	PaymentProviderId   *string                `json:"payment_provider_id,omitempty"`
 	Properties          map[string]interface{} `json:"properties,omitempty"`
 	TaxRate             decimal.Decimal        `json:"tax_rate"`
-	Address             *Address               `json:"address,omitempty"`
+	Address             *Address               `json:"address,omitempty"` // Deprecated, use billing address instead
 	BillingAddress      *Address               `json:"billing_address,omitempty"`
 	ShippingAddress     *Address               `json:"shipping_address,omitempty"`
 }
@@ -32,7 +32,7 @@ type Customer struct {
 	Timezone          string                 `json:"timezone,omitempty"`
 	PaymentProvider   string                 `json:"payment_provider,omitempty"`
 	PaymentProviderId string                 `json:"payment_provider_id,omitempty"`
-	Address           *Address               `json:"address,omitempty,omitempty"`
+	Address           *Address               `json:"address,omitempty,omitempty"` // Deprecated, use billing address instead
 	BillingAddress    *Address               `json:"billing_address,omitempty"`
 	HasPaymentMethod  bool                   `json:"has_payment_method,omitempty"`
 	ShippingAddress   *Address               `json:"shipping_address,omitempty"`
@@ -84,7 +84,7 @@ func (c *Client) GetCustomer(req GetCustomerRequest) (resp *Customer, err error)
 // See: https://docs.uselotus.io/api-reference/customers/list-customers
 func (c *Client) ListCustomers() (resp ListCustomersResponse, err error) {
 	resp = make(ListCustomersResponse, 0)
-	err = c.get("/api/customers/", nil, resp)
+	err = c.get("/api/customers/", nil, &resp)
 	if err != nil {
 		return nil, err
 	}

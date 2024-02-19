@@ -45,7 +45,17 @@ func (c *Client) WithDebug(d bool) *Client {
 
 // WithTimeout sets HTTP client timeout
 func (c *Client) WithTimeout(t time.Duration) *Client {
-	c.client.SetTimeout(t)
+	if t.Milliseconds() > 0 {
+		c.client.SetTimeout(t)
+	}
+	return c
+}
+
+// WithTransport sets HTTP client transport
+func (c *Client) WithTransport(tran *http.Transport) *Client {
+	if tran != nil {
+		c.client.SetTransport(tran)
+	}
 	return c
 }
 

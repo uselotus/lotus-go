@@ -9,7 +9,7 @@ type GetFeatureAccessRequest struct {
 	FeatureId  string `json:"feature_id,omitempty"`
 }
 
-func (r GetFeatureAccessRequest) asMap() map[string]string {
+func (r GetFeatureAccessRequest) q() map[string]string {
 	return map[string]string{
 		"customer_id": r.CustomerId,
 		"feature_id":  r.FeatureId,
@@ -21,7 +21,7 @@ type GetMetricAccessRequest struct {
 	MetricId   string `json:"metric_id,omitempty"`
 }
 
-func (r GetMetricAccessRequest) asMap() map[string]string {
+func (r GetMetricAccessRequest) q() map[string]string {
 	return map[string]string{
 		"customer_id": r.CustomerId,
 		"metric_id":   r.MetricId,
@@ -58,7 +58,7 @@ type MetricSubscriptionAccess struct {
 // See: https://docs.uselotus.io/api-reference/access/feature-access
 func (c *Client) GetFeatureAccess(req GetFeatureAccessRequest) (resp *FeatureEntitlement, err error) {
 	resp = new(FeatureEntitlement)
-	err = c.get("/api/feature_access/", req.asMap(), resp)
+	err = c.get("/api/feature_access/", req.q(), resp)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (c *Client) GetFeatureAccess(req GetFeatureAccessRequest) (resp *FeatureEnt
 // See https://docs.uselotus.io/api-reference/access/metric-access
 func (c *Client) GetMetricAccess(req GetMetricAccessRequest) (resp *MetricEntitlement, err error) {
 	resp = new(MetricEntitlement)
-	err = c.get("/api/metric_access/", req.asMap(), resp)
+	err = c.get("/api/metric_access/", req.q(), resp)
 	if err != nil {
 		return nil, err
 	}
