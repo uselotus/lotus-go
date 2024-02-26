@@ -201,7 +201,7 @@ type Error struct {
     - [x] Get Feature Access
     - [x] Get Metric Access
 6. Plans
-    - [x] List Plans (Missing some query filters)
+    - [x] List Plans
     - [x] Get Plan
 7. Add-ons
     - [x] Attach Add-on
