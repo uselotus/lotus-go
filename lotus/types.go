@@ -317,9 +317,6 @@ func (r ListCreditsRequest) Strings() map[string]string {
 	if r.IssuedBefore != nil {
 		m["issued_before"] = r.IssuedBefore.Format(time.RFC3339)
 	}
-	//if len(r.Status) > 0 {
-	//	m["status"] =
-	//}
 	return m
 }
 
