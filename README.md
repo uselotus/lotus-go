@@ -162,6 +162,7 @@ We have declared `lotus.Error` type to represent Lotus API errors with some help
 - `IsLotusError(err error) bool`: Checks whether given error is one of Lotus defined types
 - `IsNotFound(err error) bool`: Checks whether error is not found error
 - `IsDuplicated(err error) bool`: Checks whether error is duplicate error
+- `IsInvalidState(err error) bool`: Checks whether error is invalid state error
 - `IsTimeout(err error) bool`: Checks whether error is timeout error
 
 ```go
@@ -178,22 +179,23 @@ type Error struct {
 
 ## Currently Supported Methods
 
-1. Tracking:
+1. Tracking Events
     - [x] Track Event
+    - [x] Verify Event Ingestion
 2. Customers
     - [x] List Customers
     - [x] Get Customer
-    - [x] Create Customer (Server issue found)
+    - [x] Create Customer
 3. Credits
-    - [ ] List Credits
-    - [ ] Create Credit
-    - [ ] Update Credit
-    - [ ] Void Credit
+    - [x] List Credits
+    - [x] Create Credit
+    - [x] Update Credit
+    - [x] Void Credit
 4. Subscriptions
     - [x] List Subscriptions
     - [x] Create Subscription
     - [x] Cancel Subscription
-    - [x] Switch a Subscription's plan (Server issue found)
+    - [x] Switch a Subscription's plan
     - [x] Update Subscription
 5. Access Management
     - [x] Get Feature Access
@@ -204,3 +206,28 @@ type Error struct {
 7. Add-ons
     - [x] Attach Add-on
     - [x] Cancel Add-on
+8. Invoices
+    - [x] List Invoices
+    - [x] Get Invoice
+    - [x] Get Invoice PDF Url
+
+## Development & Local Test
+
+1. Start a new Lotus instance with AWS access key & access secret configured
+2. Create the following entities for test:
+    - An organization with subscription filter consisting of `subscription_filter_key`
+    - An API key
+    - Two plans
+    - A feature
+    - A metric with event name specified
+    - An addon
+3. Configure following environment values:
+    - `LOTUS_SDK_TEST_HOST`
+    - `LOTUS_SDK_TEST_KEY`
+    - `LOTUS_SDK_TEST_PLAN`
+    - `LOTUS_SDK_TEST_PLAN2`
+    - `LOTUS_SDK_TEST_FEATURE`
+    - `LOTUS_SDK_TEST_EVENT`
+    - `LOTUS_SDK_TEST_METRIC`
+    - `LOTUS_SDK_TEST_ADDON`
+4. Run tests

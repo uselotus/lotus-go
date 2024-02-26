@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Client the Lotus go client
 type Client struct {
 	host   string
 	key    string
@@ -73,13 +74,17 @@ func (c *Client) auth() string {
 }
 
 // post sends a POST request with body req, response will be stored in res
-func (c *Client) post(url string, q map[string]string, req interface{}, res interface{}) error {
-	resp, err := c.client.R().
+func (c *Client) post(url string, qb QueryBuilder, req interface{}, res interface{}) error {
+	r := c.client.R().
 		SetHeader("X-API-Key", c.auth()).
-		SetQueryParams(q).
 		SetBody(req).
-		SetResult(res).
-		Post(c.baseUrl() + url)
+		SetResult(res)
+	if qb != nil {
+		r.SetQueryParams(qb.Strings()).
+			SetQueryParamsFromValues(qb.StringArrays())
+	}
+
+	resp, err := r.Post(c.baseUrl() + url)
 	if err != nil {
 		return err
 	}
@@ -94,12 +99,16 @@ func (c *Client) post(url string, q map[string]string, req interface{}, res inte
 }
 
 // get sends a GET request with query q, response will be stored in res
-func (c *Client) get(url string, q map[string]string, res interface{}) error {
-	resp, err := c.client.R().
+func (c *Client) get(url string, qb QueryBuilder, res interface{}) error {
+	r := c.client.R().
 		SetHeader("X-API-Key", c.auth()).
-		SetQueryParams(q).
-		SetResult(res).
-		Get(c.baseUrl() + url)
+		SetResult(res)
+	if qb != nil {
+		r.SetQueryParams(qb.Strings()).
+			SetQueryParamsFromValues(qb.StringArrays())
+	}
+
+	resp, err := r.Get(c.baseUrl() + url)
 	if err != nil {
 		return err
 	}
@@ -172,7 +181,7 @@ func (c *Client) ListCustomers() (resp ListCustomersResponse, err error) {
 // See: https://docs.uselotus.io/api-reference/access/feature-access
 func (c *Client) GetFeatureAccess(req GetFeatureAccessRequest) (resp *FeatureEntitlement, err error) {
 	resp = new(FeatureEntitlement)
-	err = c.get("/api/feature_access/", req.q(), resp)
+	err = c.get("/api/feature_access/", req, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +192,7 @@ func (c *Client) GetFeatureAccess(req GetFeatureAccessRequest) (resp *FeatureEnt
 // See https://docs.uselotus.io/api-reference/access/metric-access
 func (c *Client) GetMetricAccess(req GetMetricAccessRequest) (resp *MetricEntitlement, err error) {
 	resp = new(MetricEntitlement)
-	err = c.get("/api/metric_access/", req.q(), resp)
+	err = c.get("/api/metric_access/", req, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +225,7 @@ func (c *Client) VerifyEventIngestion(req VerifyEventIngestionRequest) (resp *Ve
 // See: https://docs.uselotus.io/api-reference/plans/list-plans
 func (c *Client) ListPlans(req ListPlansRequest) (resp ListPlansResponse, err error) {
 	resp = make(ListPlansResponse, 0)
-	err = c.get("/api/plans/", nil, &resp)
+	err = c.get("/api/plans/", req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +258,7 @@ func (c *Client) CreateSubscription(req CreateSubscriptionRequest) (resp *Subscr
 // See: https://docs.uselotus.io/api-reference/subscriptions/list-subscriptions
 func (c *Client) ListSubscriptions(req ListSubscriptionsRequest) (resp ListSubscriptionsResponse, err error) {
 	resp = make(ListSubscriptionsResponse, 0)
-	err = c.get("/api/subscriptions/", req.q(), &resp)
+	err = c.get("/api/subscriptions/", req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +276,11 @@ func (c *Client) UpdateSubscription(req UpdateSubscriptionRequest) (resp *Subscr
 	return resp, nil
 }
 
-// SwitchSubscriptionPlan upgrades or downgrades the subscription’s plan
+// SwitchSubscriptionPlan upgrades or downgrades the subscription’s plan.
+//
+//	NOTE: When a subscription is upgraded or downgraded, it is ended at that moment with auto-renew closed.
+//	A new subscription record is created with addons pointing to the new one.
+//
 // See: https://docs.uselotus.io/api-reference/subscriptions/switch-subscription-plan
 func (c *Client) SwitchSubscriptionPlan(req SwitchSubscriptionPlanRequest) (resp *Subscription, err error) {
 	resp = new(Subscription)
@@ -291,8 +304,8 @@ func (c *Client) CancelSubscription(req CancelSubscriptionRequest) (resp *Subscr
 
 // AttachAddon adds an addon to a customer’s subscription
 // See: https://docs.uselotus.io/api-reference/subscriptions/attach-addon
-func (c *Client) AttachAddon(req AttachAddonRequest) (resp *Subscription, err error) {
-	resp = new(Subscription)
+func (c *Client) AttachAddon(req AttachAddonRequest) (resp *Addon, err error) {
+	resp = new(Addon)
 	err = c.post("/api/subscriptions/"+req.SubscriptionId+"/addons/attach/", nil, req, resp)
 	if err != nil {
 		return nil, err
@@ -302,11 +315,96 @@ func (c *Client) AttachAddon(req AttachAddonRequest) (resp *Subscription, err er
 
 // CancelAddon cancels an addon in the customer’s subscription
 // See: https://docs.uselotus.io/api-reference/subscriptions/attach-addon
-func (c *Client) CancelAddon(req CancelAddonRequest) (resp *Subscription, err error) {
-	resp = new(Subscription)
+func (c *Client) CancelAddon(req CancelAddonRequest) (resp *Addon, err error) {
+	resp = new(Addon)
 	err = c.post("/api/subscriptions/"+req.SubscriptionId+"/addons/"+req.AddonId+"/cancel/", nil, req, resp)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
+}
+
+// ListCredits retrieves an array of credits
+// See: https://docs.uselotus.io/api-reference/credits/list-credits
+func (c *Client) ListCredits(req ListCreditsRequest) (resp ListCreditsResponse, err error) {
+	resp = make(ListCreditsResponse, 0)
+	err = c.get("/api/credits/", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// CreateCredit creates a credit
+// See: https://docs.uselotus.io/api-reference/credits/create-credit
+func (c *Client) CreateCredit(req CreateCreditRequest) (resp *Credit, err error) {
+	resp = new(Credit)
+	err = c.post("/api/credits/", nil, req, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// VoidCredit immediately voids a credit. If the credit is already expired or has already been consumed, nothing will happen
+// See: https://docs.uselotus.io/api-reference/credits/void-credit
+func (c *Client) VoidCredit(req VoidCreditRequest) (resp *Credit, err error) {
+	resp = new(Credit)
+	err = c.post("/api/credits/"+req.CreditId+"/void/", nil, req, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// UpdateCredit alters the description or expiration date of a credit.
+// If the credit expiry is in the past, this will throw an error.
+// If the targeted credit is no longer active, this will throw an error
+// See: https://docs.uselotus.io/api-reference/credits/void-credit
+func (c *Client) UpdateCredit(req UpdateCreditRequest) (resp *Credit, err error) {
+	resp = new(Credit)
+	err = c.post("/api/credits/"+req.CreditId+"/update/", nil, req, resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// ListInvoices retrieves an array of invoice objects
+// See: https://docs.uselotus.io/api-reference/invoices/list-invoices
+func (c *Client) ListInvoices(req ListInvoicesRequest) (resp ListInvoicesResponse, err error) {
+	resp = make(ListInvoicesResponse, 0)
+	err = c.get("/api/invoices/", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetInvoice retrieves specified invoice object
+// See: https://docs.uselotus.io/api-reference/invoices/get-invoice
+func (c *Client) GetInvoice(req GetInvoiceRequest) (resp *Invoice, err error) {
+	resp = new(Invoice)
+	err = c.get("/api/invoices/"+req.InvoiceId+"/", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetInvoicePDFUrl retrieves the PDF url of specified invoice generated by Lotus
+// See: https://docs.uselotus.io/api-reference/invoices/get-invoice-pdf
+func (c *Client) GetInvoicePDFUrl(req GetInvoicePDFUrlRequest) (resp *GetInvoicePDFUrlResponse, err error) {
+	resp = new(GetInvoicePDFUrlResponse)
+	err = c.get("/api/invoices/"+req.InvoiceId+"/pdf_url/", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// QueryBuilder defines the interface for building HTTP reqeust query
+type QueryBuilder interface {
+	Strings() map[string]string
+	StringArrays() map[string][]string
 }

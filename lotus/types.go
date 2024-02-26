@@ -1,9 +1,14 @@
 package lotus
 
 import (
+	"encoding/json"
 	"github.com/shopspring/decimal"
 	"time"
 )
+
+type PingResponse struct {
+	OrganizationId string `json:"organization_id"`
+}
 
 type CreateCustomerRequest struct {
 	CustomerId          *string                `json:"customer_id,omitempty"`
@@ -25,90 +30,60 @@ type GetCustomerRequest struct {
 
 type ListCustomersResponse []*Customer
 
-type Customer struct {
-	CustomerId        string                 `json:"customer_id,omitempty"`
-	Email             string                 `json:"email,omitempty"`
-	CustomerName      string                 `json:"customer_name,omitempty"`
-	DefaultCurrency   *Currency              `json:"default_currency,omitempty"`
-	TotalAmountDue    decimal.Decimal        `json:"total_amount_due"`
-	TaxRate           decimal.Decimal        `json:"tax_rate"`
-	Timezone          string                 `json:"timezone,omitempty"`
-	PaymentProvider   string                 `json:"payment_provider,omitempty"`
-	PaymentProviderId string                 `json:"payment_provider_id,omitempty"`
-	Address           *Address               `json:"address,omitempty,omitempty"` // Deprecated, use billing address instead
-	BillingAddress    *Address               `json:"billing_address,omitempty"`
-	HasPaymentMethod  bool                   `json:"has_payment_method,omitempty"`
-	ShippingAddress   *Address               `json:"shipping_address,omitempty"`
-	Subscriptions     []*Subscription        `json:"subscriptions,omitempty"`
-	Invoices          []interface{}          `json:"invoices,omitempty"`      // TODO
-	Integrations      interface{}            `json:"integrations,omitempty"`  // TODO
-	TaxProviders      []interface{}          `json:"tax_providers,omitempty"` // TODO
-	Properties        map[string]interface{} `json:"properties,omitempty"`
-}
-
-type CustomerMeta struct {
-	CustomerId   string `json:"customer_id,omitempty"`
-	CustomerName string `json:"customer_name,omitempty"`
-	Email        string `json:"email,omitempty"`
-}
-
-type Address struct {
-	City       string `json:"city,omitempty"`
-	Country    string `json:"country,omitempty"`
-	Line1      string `json:"line1,omitempty"`
-	Line2      string `json:"line2,omitempty"`
-	PostalCode string `json:"postal_code,omitempty"`
-	State      string `json:"state,omitempty"`
-}
-
 type GetFeatureAccessRequest struct {
-	CustomerId string `json:"customer_id,omitempty"`
-	FeatureId  string `json:"feature_id,omitempty"`
+	CustomerId          string                // Required
+	FeatureId           string                // Required
+	SubscriptionFilters []*SubscriptionFilter // Optional
 }
 
-func (r GetFeatureAccessRequest) q() map[string]string {
+func (r GetFeatureAccessRequest) Strings() map[string]string {
 	return map[string]string{
 		"customer_id": r.CustomerId,
 		"feature_id":  r.FeatureId,
 	}
 }
 
-type GetMetricAccessRequest struct {
-	CustomerId string `json:"customer_id,omitempty"`
-	MetricId   string `json:"metric_id,omitempty"`
+func (r GetFeatureAccessRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.SubscriptionFilters) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.SubscriptionFilters {
+			byt, err := json.Marshal(r.SubscriptionFilters[i])
+			if err == nil {
+				tmp = append(tmp, string(byt))
+			}
+		}
+		m["subscription_filters"] = tmp
+	}
+	return m
 }
 
-func (r GetMetricAccessRequest) q() map[string]string {
+type GetMetricAccessRequest struct {
+	CustomerId          string                // Required
+	MetricId            string                // Required
+	SubscriptionFilters []*SubscriptionFilter // Optional
+}
+
+func (r GetMetricAccessRequest) Strings() map[string]string {
 	return map[string]string{
 		"customer_id": r.CustomerId,
 		"metric_id":   r.MetricId,
 	}
 }
 
-type FeatureEntitlement struct {
-	Access                bool                         `json:"access"`
-	Customer              *CustomerMeta                `json:"customer,omitempty"`
-	Feature               *FeatureMeta                 `json:"feature,omitempty"`
-	AccessPerSubscription []*FeatureSubscriptionAccess `json:"access_per_subscription,omitempty"`
-}
-
-type FeatureSubscriptionAccess struct {
-	Access       bool              `json:"access"`
-	Subscription *SubscriptionMeta `json:"subscription,omitempty"`
-}
-
-type MetricEntitlement struct {
-	Access                bool                        `json:"access"`
-	Customer              *CustomerMeta               `json:"customer,omitempty"`
-	Metric                *MetricMeta                 `json:"metric,omitempty"`
-	AccessPerSubscription []*MetricSubscriptionAccess `json:"access_per_subscription,omitempty"`
-}
-
-type MetricSubscriptionAccess struct {
-	MetricFreeLimit  decimal.Decimal   `json:"metric_free_limit"`
-	MetricTotalLimit decimal.Decimal   `json:"metric_total_limit"`
-	MetricUsage      decimal.Decimal   `json:"metric_usage"`
-	Subscription     *SubscriptionMeta `json:"subscription,omitempty"`
+func (r GetMetricAccessRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.SubscriptionFilters) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.SubscriptionFilters {
+			byt, err := json.Marshal(r.SubscriptionFilters[i])
+			if err == nil {
+				tmp = append(tmp, string(byt))
+			}
+		}
+		m["subscription_filters"] = tmp
+	}
+	return m
 }
 
 type TrackEventsRequest struct {
@@ -127,160 +102,85 @@ type VerifyEventIngestionRequest struct {
 }
 
 type VerifyEventIngestionResponse struct {
-	IdsNotFound []string `json:"ids_not_found"`
-	Status      string   `json:"status"`
-}
-
-type Event struct {
-	CustomerId    string                 `json:"customer_id,omitempty"`
-	EventName     string                 `json:"event_name,omitempty"`
-	IdempotencyId string                 `json:"idempotency_id,omitempty"`
-	TimeCreated   time.Time              `json:"time_created,omitempty"`
-	Properties    map[string]interface{} `json:"properties,omitempty"`
-}
-
-type BillableMetric struct {
-	MetricId           string    `json:"metric_id,omitempty"`
-	EventName          string    `json:"event_name,omitempty"`
-	PropertyName       string    `json:"property_name,omitempty"`
-	AggregationType    string    `json:"aggregation_type,omitempty"`
-	Granularity        string    `json:"granularity,omitempty"`
-	EventType          string    `json:"event_type,omitempty"`
-	MetricType         string    `json:"metric_type,omitempty"`
-	MetricName         string    `json:"metric_name,omitempty"`
-	NumericFilters     []*Filter `json:"numeric_filters,omitempty"`
-	CategoricalFilters []*Filter `json:"categorical_filters,omitempty"`
-	IsCostMetric       bool      `json:"is_cost_metric,omitempty"`
-	CustomSql          string    `json:"custom_sql,omitempty"`
-	Proration          string    `json:"proration,omitempty"`
-}
-
-type MetricMeta struct {
-	MetricId   string `json:"metric_id,omitempty"`
-	EventName  string `json:"event_name,omitempty"`
-	MetricName string `json:"metric_name,omitempty"`
-}
-
-type FeatureMeta struct {
-	FeatureId          string `json:"feature_id,omitempty"`
-	FeatureName        string `json:"feature_name,omitempty"`
-	FeatureDescription string `json:"feature_description,omitempty"`
+	IdsNotFound []string                   `json:"ids_not_found"`
+	Status      VerifyEventIngestionStatus `json:"status"`
 }
 
 type ListPlansRequest struct {
-	Duration Duration `json:"duration"`
-	// TODO: add more filters
+	Duration            *PlanDuration       // Optional
+	IncludeTags         []string            // Optional
+	ExcludeTags         []string            // Optional
+	IncludeTagsAll      []string            // Optional
+	VersionCurrencyCode *string             // Optional
+	VersionCustomType   *PlanVersionType    // Optional
+	VersionStatus       []PlanVersionStatus // Optional
+}
+
+func (r ListPlansRequest) Strings() map[string]string {
+	m := make(map[string]string)
+	if r.Duration != nil {
+		m["plan_duration"] = string(*r.Duration)
+	}
+	if r.VersionCurrencyCode != nil {
+		m["version_currency_code"] = *r.VersionCurrencyCode
+	}
+	if r.VersionCustomType != nil {
+		m["version_custom_type"] = string(*r.VersionCustomType)
+	}
+	return m
+}
+
+func (r ListPlansRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.IncludeTags) > 0 {
+		m["include_tags"] = r.IncludeTags
+	}
+	if len(r.ExcludeTags) > 0 {
+		m["exclude_tags"] = r.ExcludeTags
+	}
+	if len(r.IncludeTagsAll) > 0 {
+		m["include_tags_all"] = r.IncludeTagsAll
+	}
+	if len(r.VersionStatus) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.VersionStatus {
+			tmp = append(tmp, string(r.VersionStatus[i]))
+		}
+		m["version_status"] = tmp
+	}
+	return m
 }
 
 type ListPlansResponse []*Plan
 
 type GetPlanRequest struct {
-	PlanId string
+	PlanId              string              // Required
+	VersionCurrencyCode *string             // Optional
+	VersionCustomType   *PlanVersionType    // Optional
+	VersionStatus       []PlanVersionStatus // Optional
 }
 
-type Plan struct {
-	PlanId              string          `json:"plan_id,omitempty"`
-	PlanName            string          `json:"plan_name,omitempty"`
-	PlanDuration        string          `json:"plan_duration,omitempty"`
-	PlanDescription     string          `json:"plan_description,omitempty"`
-	ExternalLinks       []*ExternalLink `json:"external_links,omitempty"`
-	NumVersions         int             `json:"num_versions,omitempty"`
-	ActiveVersion       int             `json:"active_version,omitempty"`
-	ActiveSubscriptions int             `json:"active_subscriptions,omitempty"`
-	Tags                []string        `json:"tags,omitempty"`
-	Versions            []*Version      `json:"versions,omitempty"`
-	ParentPlan          *Plan           `json:"parent_plan,omitempty"`
-	TargetCustomer      *CustomerMeta   `json:"target_customer,omitempty"`
-	DisplayVersion      *Version        `json:"display_version,omitempty"`
-	Status              string          `json:"status,omitempty"`
+func (r GetPlanRequest) Strings() map[string]string {
+	m := make(map[string]string)
+	if r.VersionCurrencyCode != nil {
+		m["version_currency_code"] = *r.VersionCurrencyCode
+	}
+	if r.VersionCustomType != nil {
+		m["version_custom_type"] = string(*r.VersionCustomType)
+	}
+	return m
 }
 
-type PlanMeta struct {
-	PlanId    string `json:"plan_id,omitempty"`
-	PlanName  string `json:"plan_name,omitempty"`
-	Version   int    `json:"version,omitempty"`
-	VersionId string `json:"version_id,omitempty"`
-}
-
-type ExternalLink struct {
-	Source         string `json:"source,omitempty"`
-	ExternalPlanId string `json:"external_plan_id,omitempty"`
-}
-
-type Version struct {
-	Version               int                 `json:"version,omitempty"`
-	PlanName              string              `json:"plan_name,omitempty"`
-	LocalizedName         string              `json:"localized_name,omitempty"`
-	ActiveFrom            time.Time           `json:"active_from,omitempty"`
-	ActiveTo              time.Time           `json:"active_to,omitempty"`
-	CreatedOn             time.Time           `json:"created_on,omitempty"`
-	Description           string              `json:"description,omitempty"`
-	Currency              *Currency           `json:"currency,omitempty"`
-	Features              []*FeatureMeta      `json:"features,omitempty"`
-	RecurringCharges      []*RecurringCharge  `json:"recurring_charges,omitempty"`
-	Components            []*PricingComponent `json:"components,omitempty"`
-	PriceAdjustment       *PriceAdjustment    `json:"price_adjustment,omitempty"`
-	TargetCustomers       []*CustomerMeta     `json:"target_customers,omitempty"`
-	UsageBillingFrequency string              `json:"usage_billing_frequency,omitempty"`
-	FlatFeeBillingType    string              `json:"flat_fee_billing_type,omitempty"`
-	FlatRate              decimal.Decimal     `json:"flat_rate,omitempty"`
-	Status                string              `json:"status,omitempty"`
-}
-
-type Currency struct {
-	Code   string `json:"code,omitempty"`
-	Name   string `json:"name,omitempty"`
-	Symbol string `json:"symbol,omitempty"`
-}
-
-type PriceAdjustment struct {
-	PriceAdjustmentName        string          `json:"price_adjustment_name,omitempty"`
-	PriceAdjustmentDescription string          `json:"price_adjustment_description,omitempty"`
-	PriceAdjustmentType        string          `json:"price_adjustment_type,omitempty"`
-	PriceAdjustmentAmount      decimal.Decimal `json:"price_adjustment_amount,omitempty"`
-}
-
-type PricingTier struct {
-	Type                string          `json:"type,omitempty"`
-	RangeStart          decimal.Decimal `json:"range_start,omitempty"`
-	RangeEnd            decimal.Decimal `json:"range_end,omitempty"`
-	CostPerBatch        decimal.Decimal `json:"cost_per_batch,omitempty"`
-	MetricUnitsPerBatch decimal.Decimal `json:"metric_units_per_batch,omitempty"`
-	BatchRoundingType   string          `json:"batch_rounding_type,omitempty"`
-}
-
-type PrepaidCharge struct {
-	Units          int    `json:"units,omitempty"`
-	ChargeBehavior string `json:"charge_behavior,omitempty"`
-}
-
-type Filter struct {
-	PropertyName    string `json:"property_name,omitempty"`
-	Operator        string `json:"operator,omitempty"`
-	ComparisonValue int    `json:"comparison_value,omitempty"`
-}
-
-type PricingComponent struct {
-	BillableMetric         *BillableMetric `json:"billable_metric,omitempty"`
-	Tiers                  []*PricingTier  `json:"tiers,omitempty"`
-	PricingUnit            *Currency       `json:"pricing_unit,omitempty"`
-	InvoicingIntervalUnit  string          `json:"invoicing_interval_unit,omitempty"`
-	InvoicingIntervalCount int             `json:"invoicing_interval_count,omitempty"`
-	ResetIntervalUnit      string          `json:"reset_interval_unit,omitempty"`
-	ResetIntervalCount     int             `json:"reset_interval_count,omitempty"`
-	PrepaidCharge          *PrepaidCharge  `json:"prepaid_charge,omitempty"`
-}
-
-type RecurringCharge struct {
-	Name                   string          `json:"name,omitempty"`
-	ChargeTiming           string          `json:"charge_timing,omitempty"`
-	ChargeBehavior         string          `json:"charge_behavior,omitempty"`
-	Amount                 decimal.Decimal `json:"amount,omitempty"`
-	PricingUnit            *Currency       `json:"pricing_unit,omitempty"`
-	InvoicingIntervalUnit  string          `json:"invoicing_interval_unit,omitempty"`
-	InvoicingIntervalCount int             `json:"invoicing_interval_count,omitempty"`
-	ResetIntervalUnit      string          `json:"reset_interval_unit,omitempty"`
-	ResetIntervalCount     int             `json:"reset_interval_count,omitempty"`
+func (r GetPlanRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.VersionStatus) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.VersionStatus {
+			tmp = append(tmp, string(r.VersionStatus[i]))
+		}
+		m["version_status"] = tmp
+	}
+	return m
 }
 
 type CreateSubscriptionRequest struct {
@@ -291,20 +191,20 @@ type CreateSubscriptionRequest struct {
 	StartDate                         time.Time                           `json:"start_date,omitempty"`
 	EndDate                           *time.Time                          `json:"end_date,omitempty"`
 	ComponentFixedChargesInitialUnits []*ComponentFixedChargesInitialUnit `json:"component_fixed_charges_initial_units,omitempty"`
-	SubscriptionFilters               []*SubscriptionFilter               `json:"subscription_filters,omitempty"`
+	SubscriptionFilters               []*SubscriptionFilter               `json:"subscription_filters,omitempty"` // Add filter key, value pairs that define which events will be applied to this plan subscription
 	Metadata                          map[string]interface{}              `json:"metadata,omitempty"`
 }
 
 type ListSubscriptionsRequest struct {
-	CustomerId          string                `json:"customer_id,omitempty"`
-	PlanId              *string               `json:"plan_id,omitempty"`
-	RangeStart          *time.Time            `json:"range_start,omitempty"`
-	RangeEnd            *time.Time            `json:"range_end,omitempty"`
-	Status              []string              `json:"status,omitempty"`
-	SubscriptionFilters []*SubscriptionFilter `json:"subscription_filters,omitempty"`
+	CustomerId          string                // Required
+	PlanId              *string               // Optional
+	RangeStart          *time.Time            // Optional
+	RangeEnd            *time.Time            // Optional
+	Status              []SubscriptionStatus  // Optional
+	SubscriptionFilters []*SubscriptionFilter // Optional
 }
 
-func (r ListSubscriptionsRequest) q() map[string]string {
+func (r ListSubscriptionsRequest) Strings() map[string]string {
 	m := make(map[string]string)
 	m["customer_id"] = r.CustomerId
 	if r.PlanId != nil {
@@ -315,6 +215,28 @@ func (r ListSubscriptionsRequest) q() map[string]string {
 	}
 	if r.RangeEnd != nil {
 		m["range_end"] = r.RangeEnd.Format(time.RFC3339)
+	}
+	return m
+}
+
+func (r ListSubscriptionsRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.Status) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.Status {
+			tmp = append(tmp, string(r.Status[i]))
+		}
+		m["status"] = tmp
+	}
+	if len(r.SubscriptionFilters) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.SubscriptionFilters {
+			byt, err := json.Marshal(r.SubscriptionFilters[i])
+			if err == nil {
+				tmp = append(tmp, string(byt))
+			}
+		}
+		m["subscription_filters"] = tmp
 	}
 	return m
 }
@@ -332,17 +254,17 @@ type SwitchSubscriptionPlanRequest struct {
 	SubscriptionId                    string                              `json:"-"`
 	SwitchPlanId                      string                              `json:"switch_plan_id,omitempty"`
 	InvoicingBehavior                 InvoicingBehavior                   `json:"invoicing_behavior,omitempty"`
-	UsageBehavior                     SwitchPlanUsageBehavior             `json:"usage_behavior,omitempty"`
-	AutoRenew                         bool                                `json:"auto_renew,omitempty"` // TODO
+	UsageBehavior                     UsageBehavior                       `json:"usage_behavior,omitempty"`
 	ComponentFixedChargesInitialUnits []*ComponentFixedChargesInitialUnit `json:"component_fixed_charges_initial_units,omitempty"`
-	Metadata                          map[string]interface{}              `json:"metadata,omitempty"` // TODO
+	AutoRenew                         bool                                `json:"auto_renew,omitempty"` // TODO: add support server side
+	Metadata                          map[string]interface{}              `json:"metadata,omitempty"`   // TODO: add support server side
 }
 
 type CancelSubscriptionRequest struct {
-	SubscriptionId    string                      `json:"-"`
-	InvoicingBehavior InvoicingBehavior           `json:"invoicing_behavior,omitempty"`
-	UsageBehavior     CancellationUsageBehavior   `json:"usage_behavior,omitempty"`
-	FlatFeeBehavior   CancellationFlatFeeBehavior `json:"flat_fee_behavior,omitempty"`
+	SubscriptionId       string               `json:"-"`
+	InvoicingBehavior    InvoicingBehavior    `json:"invoicing_behavior,omitempty"`
+	UsageBillingBehavior UsageBillingBehavior `json:"usage_behavior,omitempty"` // Usage billing behavior, distinct from usage behavior
+	FlatFeeBehavior      FlatFeeBehavior      `json:"flat_fee_behavior,omitempty"`
 }
 
 type AttachAddonRequest struct {
@@ -352,43 +274,125 @@ type AttachAddonRequest struct {
 }
 
 type CancelAddonRequest struct {
-	SubscriptionId    string                      `json:"-"`
-	AddonId           string                      `json:"-"`
-	InvoicingBehavior InvoicingBehavior           `json:"invoicing_behavior,omitempty"`
-	UsageBehavior     CancellationUsageBehavior   `json:"usage_behavior,omitempty"`
-	FlatFeeBehavior   CancellationFlatFeeBehavior `json:"flat_fee_behavior,omitempty"`
+	SubscriptionId       string               `json:"-"`
+	AddonId              string               `json:"-"`
+	InvoicingBehavior    InvoicingBehavior    `json:"invoicing_behavior,omitempty"`
+	UsageBillingBehavior UsageBillingBehavior `json:"usage_behavior,omitempty"` // Usage billing behavior, distinct from usage behavior
+	FlatFeeBehavior      FlatFeeBehavior      `json:"flat_fee_behavior,omitempty"`
 }
 
-type Subscription struct {
-	SubscriptionId                    string                              `json:"subscription_id,omitempty"`
-	Customer                          *CustomerMeta                       `json:"customer,omitempty"`
-	BillingPlan                       *PlanMeta                           `json:"billing_plan,omitempty"`
-	AutoRenew                         bool                                `json:"auto_renew,omitempty"`
-	IsNew                             bool                                `json:"is_new,omitempty"`
-	StartDate                         time.Time                           `json:"start_date,omitempty"`
-	EndDate                           *time.Time                          `json:"end_date,omitempty"`
-	ComponentFixedChargesInitialUnits []*ComponentFixedChargesInitialUnit `json:"component_fixed_charges_initial_units,omitempty"`
-	SubscriptionFilters               []*SubscriptionFilter               `json:"subscription_filters,omitempty"`
-	Metadata                          map[string]interface{}              `json:"metadata,omitempty"`
+type ListCreditsRequest struct {
+	CustomerId      string         // Required
+	CurrencyCode    *string        // Optional
+	EffectiveAfter  *time.Time     // Optional
+	EffectiveBefore *time.Time     // Optional
+	ExpiresAfter    *time.Time     // Optional
+	ExpiresBefore   *time.Time     // Optional
+	IssuedAfter     *time.Time     // Optional
+	IssuedBefore    *time.Time     // Optional
+	Status          []CreditStatus // Optional
 }
 
-type ComponentFixedChargesInitialUnit struct {
-	MetricId string `json:"metric_id,omitempty"`
-	Units    int    `json:"units,omitempty"`
+func (r ListCreditsRequest) Strings() map[string]string {
+	m := make(map[string]string)
+	m["customer_id"] = r.CustomerId
+	if r.CurrencyCode != nil {
+		m["currency_code"] = *r.CurrencyCode
+	}
+	if r.EffectiveAfter != nil {
+		m["effective_after"] = r.EffectiveAfter.Format(time.RFC3339)
+	}
+	if r.EffectiveBefore != nil {
+		m["effective_before"] = r.EffectiveBefore.Format(time.RFC3339)
+	}
+	if r.ExpiresAfter != nil {
+		m["expires_after"] = r.ExpiresAfter.Format(time.RFC3339)
+	}
+	if r.ExpiresBefore != nil {
+		m["expires_before"] = r.ExpiresBefore.Format(time.RFC3339)
+	}
+	if r.IssuedAfter != nil {
+		m["issued_after"] = r.IssuedAfter.Format(time.RFC3339)
+	}
+	if r.IssuedBefore != nil {
+		m["issued_before"] = r.IssuedBefore.Format(time.RFC3339)
+	}
+	//if len(r.Status) > 0 {
+	//	m["status"] =
+	//}
+	return m
 }
 
-type SubscriptionFilter struct {
-	PropertyName string `json:"property_name,omitempty"`
-	Value        string `json:"value,omitempty"`
+func (r ListCreditsRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.Status) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.Status {
+			tmp = append(tmp, string(r.Status[i]))
+		}
+		m["status"] = tmp
+	}
+	return m
 }
 
-type SubscriptionMeta struct {
-	StartDate           time.Time             `json:"start_date,omitempty"`
-	EndDate             time.Time             `json:"end_date,omitempty"`
-	Plan                *PlanMeta             `json:"plan,omitempty"`
-	SubscriptionFilters []*SubscriptionFilter `json:"subscription_filters,omitempty"`
+type ListCreditsResponse []*Credit
+
+type CreateCreditRequest struct {
+	Amount                 decimal.Decimal  `json:"amount,omitempty"`
+	CurrencyCode           string           `json:"currency_code,omitempty"`
+	CustomerId             string           `json:"customer_id,omitempty"`
+	AmountPaid             *decimal.Decimal `json:"amount_paid,omitempty"`
+	AmountPaidCurrencyCode *string          `json:"amount_paid_currency_code,omitempty"`
+	EffectiveAt            *time.Time       `json:"effective_at,omitempty"`
+	ExpiresAt              *time.Time       `json:"expires_at,omitempty"`
+	Description            *string          `json:"description,omitempty"`
 }
 
-type PingResponse struct {
-	OrganizationId string `json:"organization_id"`
+type VoidCreditRequest struct {
+	CreditId string `json:"-"`
+}
+
+type UpdateCreditRequest struct {
+	CreditId    string     `json:"-"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	Description *string    `json:"description,omitempty"`
+}
+
+type ListInvoicesRequest struct {
+	CustomerId    *string                // Optional
+	PaymentStatus []InvoicePaymentStatus // Optional
+}
+
+func (r ListInvoicesRequest) Strings() map[string]string {
+	m := make(map[string]string)
+	if r.CustomerId != nil {
+		m["customer_id"] = *r.CustomerId
+	}
+	return m
+}
+
+func (r ListInvoicesRequest) StringArrays() map[string][]string {
+	m := make(map[string][]string)
+	if len(r.PaymentStatus) > 0 {
+		tmp := make([]string, 0)
+		for i := range r.PaymentStatus {
+			tmp = append(tmp, string(r.PaymentStatus[i]))
+		}
+		m["payment_status"] = tmp
+	}
+	return m
+}
+
+type ListInvoicesResponse []*Invoice
+
+type GetInvoiceRequest struct {
+	InvoiceId string
+}
+
+type GetInvoicePDFUrlRequest struct {
+	InvoiceId string
+}
+
+type GetInvoicePDFUrlResponse struct {
+	Url string `json:"url"`
 }
